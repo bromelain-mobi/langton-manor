@@ -156,6 +156,33 @@ if (navigator.audioSession) {
 	navigator.audioSession.type = 'playback';
 }
 
+if ('wakeLock' in navigator) {
+	(function () {
+		let wakeLock = null;
+		let requesting = false;
+
+		function keepAwake() {
+			if (wakeLock !== null || requesting || document.visibilityState !== 'visible') {
+				return;
+			}
+			requesting = true;
+			navigator.wakeLock.request('screen').then(function (lock) {
+				wakeLock = lock;
+				lock.addEventListener('release', function () {
+					wakeLock = null;
+				});
+			}).catch(function () {
+			}).then(function () {
+				requesting = false;
+			});
+		}
+
+		window.addEventListener('pointerup', keepAwake, true);
+		document.addEventListener('visibilitychange', keepAwake);
+		keepAwake();
+	}());
+}
+
 var engine = new Engine({"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8693360,"index.wasm":19796835},"focusCanvas":true,"gdnativeLibs":[],"serviceWorker":"index.service.worker.js"});
 
 (function () {
