@@ -264,8 +264,49 @@ var engine = new Engine({"args":[],"canvasResizePolicy":2,"executable":"index","
 	}());
 
 	if ('serviceWorker' in navigator) {
+		let updating = false;
+
+		function applyUpdate(worker) {
+			if (updating || !initializing || !navigator.serviceWorker.controller) {
+				return;
+			}
+			updating = true;
+			worker.postMessage('claim');
+		}
+
+		function watchInstall(worker) {
+			if (!worker) {
+				return;
+			}
+			if (worker.state === 'installed') {
+				applyUpdate(worker);
+				return;
+			}
+			worker.addEventListener('statechange', function () {
+				if (worker.state === 'installed') {
+					applyUpdate(worker);
+				}
+			});
+		}
+
+		navigator.serviceWorker.addEventListener('controllerchange', function () {
+			if (updating) {
+				window.location.reload();
+			}
+		});
+
 		navigator.serviceWorker.register('index.service.worker.js')
-			.then(reg => console.log('SW Registered!', reg))
+			.then(function (reg) {
+				console.log('SW Registered!', reg);
+				watchInstall(reg.waiting);
+				watchInstall(reg.installing);
+				reg.addEventListener('updatefound', function () {
+					watchInstall(reg.installing);
+				});
+				if (navigator.serviceWorker.controller) {
+					reg.update().catch(function () {});
+				}
+			})
 			.catch(err => console.log('SW Failed:', err));
 	}
 
